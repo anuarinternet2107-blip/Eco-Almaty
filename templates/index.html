@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Almaty</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --forest:   #1e4d2b;
+            --green:    #2d8a45;
+            --lime:     #7aba57;
+            --cream:    #f5f0e8;
+            --sand:     #e8dfc8;
+            --bark:     #5c3d1e;
+            --text:     #1a1a1a;
+            --muted:    #6b7566;
+            --white:    #ffffff;
+            --error:    #c62828;
+            --error-bg: #fdecea;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--cream);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Organic background blobs */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -120px; left: -120px;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(45,138,69,0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -100px; right: -100px;
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, rgba(122,186,87,0.10) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* ── AUTH SCREEN ── */
+        #auth-screen {
+            width: 100%;
+            max-width: 420px;
+            animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .brand-logo {
+            width: 120px;
+            height: 160px;
+            margin: 0 auto 12px;
+            display: block;
+            filter: drop-shadow(0 4px 12px rgba(45,138,69,0.25));
+        }
+        .brand-name {
+            font-family: 'Fraunces', serif;
+            font-size: 38px;
+            font-weight: 900;
+            color: var(--forest);
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+        .brand-tagline {
+            font-size: 14px;
+            color: var(--muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 32px 28px;
+            box-shadow: 0 4px 32px rgba(30,77,43,0.10), 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid rgba(30,77,43,0.07);
+        }
+
+        /* Tab switcher */
+        .tab-row {
+            display: flex;
+            background: var(--cream);
+            border-radius: 14px;
+            padding: 4px;
+            margin-bottom: 28px;
+            border: 1px solid var(--sand);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--white);
+            color: var(--forest);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* Fields */
+        .field-group { margin-bottom: 16px; }
+        .field-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--forest);
+            margin-bottom: 7px;
+            letter-spacing: 0.01em;
+        }
+        .field-wrap { position: relative; }
+        .field-wrap input {
+            width: 100%;
+            padding: 13px 16px;
+            background: var(--cream);
+            border: 1.5px solid var(--sand);
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .field-wrap input:focus {
+            border-color: var(--green);
+            background: var(--white);
+            box-shadow: 0 0 0 3px rgba(45,138,69,0.10);
+        }
+        .field-wrap input.ok   { border-color: var(--lime); }
+        .field-wrap input.error { border-color: var(--error); }
+
+        .field-hint {
+            font-size: 12px;
+            margin-top: 5px;
+            padding-left: 2px;
+            min-height: 16px;
+            font-weight: 500;
+        }
+        .hint-ok      { color: var(--green); }
+        .hint-error   { color: var(--error); }
+        .hint-loading { color: var(--muted); }
+
+        /* Submit button */
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            margin-top: 8px;
+            border: none;
+            border-radius: 14px;
+            background: var(--forest);
+            color: var(--white);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.01em;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(30,77,43,0.25);
+        }
+        .submit-btn:hover {
+            background: var(--green);
+            box-shadow: 0 6px 20px rgba(30,77,43,0.30);
+        }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { background: #aaa; box-shadow: none; cursor: not-allowed; }
+
+        /* Error banner */
+        .error-banner {
+            background: var(--error-bg);
+            color: var(--error);
+            border-radius: 12px;
+            padding: 11px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            display: none;
+            border: 1px solid rgba(198,40,40,0.15);
+        }
+
+        /* ── ROLE SCREEN ── */
+        #role-screen {
+            display: none;
+            width: 100%;
+            max-width: 520px;
+            animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .role-brand {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+        .role-brand img {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 10px;
+            display: block;
+            filter: drop-shadow(0 4px 12px rgba(45,138,69,0.25));
+        }
+        .role-brand h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--forest);
+            letter-spacing: -1px;
+        }
+        .role-brand p {
+            color: var(--muted);
+            font-size: 15px;
+            margin-top: 6px;
+        }
+        .role-brand strong { color: var(--forest); font-weight: 700; }
+
+        .role-cards {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .role-card {
+            flex: 1;
+            min-width: 200px;
+            background: var(--white);
+            border-radius: 22px;
+            padding: 32px 24px;
+            text-align: center;
+            text-decoration: none;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 24px rgba(30,77,43,0.09), 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.22s cubic-bezier(0.22,1,0.36,1), box-shadow 0.22s, border-color 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .role-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(45,138,69,0.04), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .role-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(30,77,43,0.16);
+            border-color: rgba(45,138,69,0.25);
+        }
+        .role-card:hover::before { opacity: 1; }
+
+        .role-icon {
+            width: 64px; height: 64px;
+            background: var(--cream);
+            border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px;
+            margin: 0 auto 16px;
+            border: 1.5px solid var(--sand);
+        }
+        .role-card h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--forest);
+            margin-bottom: 8px;
+        }
+        .role-card p {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .logout-row {
+            text-align: center;
+            margin-top: 24px;
+        }
+        .logout-btn {
+            background: none;
+            border: 1.5px solid var(--sand);
+            color: var(--muted);
+            padding: 9px 22px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .logout-btn:hover { border-color: var(--muted); color: var(--text); }
+
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ── -->
+<div id="auth-screen">
+    <div class="brand">
+        <img class="brand-logo" src="/static/LeafLogo.png" alt="Eco-Almaty Logo">
+        <div class="brand-name">Eco-Almaty</div>
+        <div class="brand-tagline">Чистота улиц Казахстана в твоих руках!</div>
+    </div>
+
+    <div class="card">
+        <div class="tab-row">
+            <button class="tab-btn active" id="tab-login" onclick="switchAuthTab('login')">Войти</button>
+            <button class="tab-btn" id="tab-register" onclick="switchAuthTab('register')">Зарегестрироваться</button>
+        </div>
+
+        <div id="error-banner" class="error-banner"></div>
+
+        <!-- LOGIN -->
+        <div id="form-login">
+            <div class="field-group">
+                <label class="field-label">Имя пользователя</label>
+                <div class="field-wrap">
+                    <input type="text" id="login-username" placeholder="username" autocomplete="username">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">Пароль</label>
+                <div class="field-wrap">
+                    <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+                </div>
+            </div>
+            <button class="submit-btn" onclick="doLogin()">Войти →</button>
+        </div>
+
+        <!-- REGISTER -->
+        <div id="form-register" style="display:none;">
+            <div class="field-group">
+                <label class="field-label">Имя пользователя</label>
+                <div class="field-wrap">
+                    <input type="text" id="reg-username" placeholder="username" autocomplete="username" oninput="checkUsername(this.value)">
+                </div>
+                <div class="field-hint" id="username-hint"></div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">Пароль</label>
+                <div class="field-wrap">
+                    <input type="password" id="reg-password" placeholder="8+ символ" autocomplete="new-password" oninput="checkPassword(this.value)">
+                </div>
+                <div class="field-hint" id="password-hint"></div>
+            </div>
+            <button class="submit-btn" id="reg-btn" onclick="doRegister()">Зарегестрироваться →</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── ROLE SCREEN ── -->
+<div id="role-screen">
+    <div class="role-brand">
+        <img src="/static/LeafLogo.png" alt="Eco-Almaty Logo">
+        <h1>Eco-Almaty</h1>
+        <p>Привет, <strong id="welcome-name"></strong>! Выбери роль:</p>
+    </div>
+
+    <div class="role-cards">
+        <a id="reporter-link" href="#" class="role-card">
+            <div class="role-icon">📸</div>
+            <h2>Заявитель</h2>
+            <p>Сфотографировать мусор и отметить его на карте.</p>
+        </a>
+        <a id="cleaner-link" href="#" class="role-card">
+            <div class="role-icon">🧹</div>
+            <h2>Волонтер</h2>
+            <p>Возьми задание на карте и убери город.</p>
+        </a>
+    </div>
+
+    <div class="logout-row">
+        <button class="logout-btn" onclick="logout()">← Выйти</button>
+    </div>
+</div>
+
+<script>
+    let usernameOk = false;
+    let passwordOk = false;
+    let checkTimer = null;
+
+    const savedUser = localStorage.getItem('eco-almaty_username');
+    if (savedUser) showRoleScreen(savedUser);
+
+    function showRoleScreen(username) {
+        document.getElementById('auth-screen').style.display = 'none';
+        const rs = document.getElementById('role-screen');
+        rs.style.display = 'block';
+        document.getElementById('welcome-name').textContent = username;
+        document.getElementById('reporter-link').href = `/map?role=reporter&username=${encodeURIComponent(username)}`;
+        document.getElementById('cleaner-link').href  = `/map?role=cleaner&username=${encodeURIComponent(username)}`;
+    }
+
+    function logout() {
+        localStorage.removeItem('eco-almaty_username');
+        document.getElementById('role-screen').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'block';
+    }
+
+    function switchAuthTab(tab) {
+        document.getElementById('form-login').style.display    = tab === 'login'    ? 'block' : 'none';
+        document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+        document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+        document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+        hideError();
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('error-banner');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+    function hideError() {
+        document.getElementById('error-banner').style.display = 'none';
+    }
+
+    function checkUsername(val) {
+        const hint = document.getElementById('username-hint');
+        const inp  = document.getElementById('reg-username');
+        usernameOk = false;
+        if (!val) { hint.textContent = ''; inp.className = ''; return; }
+        if (val.length < 3) {
+            hint.textContent = 'Минимум 3 символа';
+            hint.className = 'field-hint hint-error';
+            inp.className = 'error'; return;
+        }
+        hint.textContent = 'Проверяем...';
+        hint.className = 'field-hint hint-loading';
+        clearTimeout(checkTimer);
+        checkTimer = setTimeout(() => {
+            fetch('/api/check-username?username=' + encodeURIComponent(val))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.taken) {
+                        hint.textContent = '✗ Это имя уже занято';
+                        hint.className = 'field-hint hint-error';
+                        inp.className = 'error'; usernameOk = false;
+                    } else {
+                        hint.textContent = '✓ Доступно';
+                        hint.className = 'field-hint hint-ok';
+                        inp.className = 'ok'; usernameOk = true;
+                    }
+                });
+        }, 400);
+    }
+
+    function checkPassword(val) {
+        const hint = document.getElementById('password-hint');
+        const inp  = document.getElementById('reg-password');
+        if (!val) { hint.textContent = ''; inp.className = ''; passwordOk = false; return; }
+        if (val.length < 8) {
+            hint.textContent = val.length + '/8 символов';
+            hint.className = 'field-hint hint-error';
+            inp.className = 'error'; passwordOk = false;
+        } else {
+            hint.textContent = '✓ Подходит';
+            hint.className = 'field-hint hint-ok';
+            inp.className = 'ok'; passwordOk = true;
+        }
+    }
+
+    async function doRegister() {
+        hideError();
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+        if (!username || username.length < 3) { showError('Введите имя пользователя (3+ символа)'); return; }
+        if (!usernameOk) { showError('Имя пользователя занято или недоступно'); return; }
+        if (!passwordOk) { showError('Пароль должен быть минимум 8 символов'); return; }
+        const btn = document.getElementById('reg-btn');
+        btn.disabled = true; btn.textContent = 'Регистрация...';
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        }).then(r => r.json());
+        btn.disabled = false; btn.textContent = 'Зарегистрироваться →';
+        if (res.success) {
+            localStorage.setItem('eco-almaty_username', username);
+            showRoleScreen(username);
+        } else {
+            showError(res.error === 'taken' ? '✗ Это имя уже занято' : '✗ Произошла ошибка');
+        }
+    }
+
+    async function doLogin() {
+        hideError();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        if (!username || !password) { showError('Заполните все поля'); return; }
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        }).then(r => r.json());
+        if (res.success) {
+            localStorage.setItem('eco-almaty_username', username);
+            showRoleScreen(username);
+        } else {
+            showError('✗ Неверное имя пользователя или пароль');
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Almaty - Карта</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --forest:   #1e4d2b;
+            --green:    #2d8a45;
+            --lime:     #7aba57;
+            --cream:    #f5f0e8;
+            --sand:     #e8dfc8;
+            --bark:     #5c3d1e;
+            --text:     #1a1a1a;
+            --muted:    #6b7566;
+            --white:    #ffffff;
+            --error:    #c62828;
+            --error-bg: #fdecea;
+            --warning:  #92650a;
+            --warn-bg:  #fff8e6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body { font-family: 'DM Sans', sans-serif; background: #e8e4dc; }
+
+        /* ── HEADER ── */
+        #header {
+            background: var(--forest);
+            color: white;
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 500;
+            position: relative;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+        }
+
+        #header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #header-back {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.2s;
+        }
+        #header-back:hover { color: white; }
+
+        .header-divider {
+            width: 1px;
+            height: 18px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        #header-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #header-brand img {
+            width: 26px;
+            height: 26px;
+            object-fit: contain;
+        }
+        #header-brand span {
+            font-family: 'Fraunces', serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: -0.3px;
+        }
+
+        #header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #uncleaned-count {
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 5px 12px;
+            border-radius: 20px;
+            color: rgba(255,255,255,0.9);
+            letter-spacing: 0.01em;
+        }
+
+        #settings-btn {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        #settings-btn:hover { background: rgba(255,255,255,0.22); }
+
+        /* ── MAP ── */
+        #map { height: calc(100vh - 56px); width: 100%; }
+
+        /* ── OVERLAYS ── */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 30, 18, 0.55);
+            backdrop-filter: blur(2px);
+            z-index: 1500;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0;
+        }
+        @media (min-width: 600px) {
+            .overlay { align-items: center; padding: 20px; }
+        }
+
+        .sheet {
+            background: var(--white);
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 480px;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 24px 22px 32px;
+            animation: slideUp 0.28s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        @media (min-width: 600px) {
+            .sheet { border-radius: 24px; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .sheet-handle {
+            width: 36px; height: 4px;
+            background: var(--sand);
+            border-radius: 2px;
+            margin: 0 auto 20px;
+        }
+        @media (min-width: 600px) { .sheet-handle { display: none; } }
+
+        .sheet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .sheet-title {
+            font-family: 'Fraunces', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--forest);
+        }
+        .close-btn {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--cream);
+            color: var(--muted);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .close-btn:hover { background: var(--sand); color: var(--text); }
+
+        /* ── SEVERITY BADGES ── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .badge-light  { background: #d4edda; color: #1a5c2a; }
+        .badge-medium { background: var(--warn-bg); color: var(--warning); }
+        .badge-severe { background: var(--error-bg); color: var(--error); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-forest { background: var(--forest); color: white; box-shadow: 0 4px 14px rgba(30,77,43,0.22); }
+        .btn-forest:hover { background: var(--green); }
+        .btn-ghost  { background: var(--cream); color: var(--text); border: 1.5px solid var(--sand); }
+        .btn-ghost:hover { background: var(--sand); }
+        .btn-danger { background: var(--error-bg); color: var(--error); }
+
+        /* ── INPUTS ── */
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--cream);
+            border: 1.5px solid var(--sand);
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text);
+            outline: none;
+            margin-bottom: 10px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: var(--green);
+            background: white;
+        }
+        input[type="file"] { display: none; }
+
+        /* ── PHOTO UPLOAD ── */
+        .photo-upload-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--sand);
+            border-radius: 16px;
+            min-height: 190px;
+            cursor: pointer;
+            overflow: hidden;
+            background: var(--cream);
+            margin-bottom: 14px;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+        }
+        .photo-upload-area:hover {
+            border-color: var(--green);
+            background: #f0f7ee;
+        }
+        .photo-upload-placeholder {
+            text-align: center;
+            color: var(--muted);
+            padding: 20px;
+        }
+        .photo-upload-placeholder .upload-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .photo-upload-placeholder p {
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        .photo-upload-placeholder span {
+            font-size: 11px;
+            color: var(--sand);
+            margin-top: 4px;
+            display: block;
+        }
+        #preview {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            display: none;
+            border-radius: 14px;
+        }
+
+        /* ── TEXTAREA ── */
+        .comment-area {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--cream);
+            border: 1.5px solid var(--sand);
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text);
+            resize: none;
+            height: 88px;
+            outline: none;
+            margin-bottom: 14px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .comment-area:focus { border-color: var(--green); background: white; }
+
+        /* ── PANEL PHOTO ── */
+        .panel-photo-wrap {
+            border-radius: 14px;
+            overflow: hidden;
+            background: var(--cream);
+            flex: 0 0 44%;
+            min-height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1.5px solid var(--sand);
+        }
+        #panel-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* ── PANEL INFO ── */
+        .panel-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .panel-type { color: var(--text); font-size: 14px; font-weight: 600; }
+        .panel-org  { font-size: 12px; color: var(--muted); font-weight: 500; }
+        .panel-date { font-size: 12px; color: var(--muted); }
+
+        .comment-box {
+            background: var(--cream);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            border-left: 3px solid var(--lime);
+            display: none;
+        }
+        .comment-box-label {
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 5px;
+        }
+        .comment-box-text {
+            color: var(--text);
+            font-size: 14px;
+            font-style: italic;
+            line-height: 1.55;
+        }
+
+        /* ── CLEAN SECTION ── */
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 2px dashed var(--sand);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--green);
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            margin-bottom: 8px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .file-upload-label:hover { border-color: var(--green); background: #f0f7ee; }
+        #clean-preview {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: none;
+            border: 1.5px solid var(--sand);
+        }
+
+        /* ── SETTINGS TABS ── */
+        .tab-row {
+            display: flex;
+            background: var(--cream);
+            border-radius: 12px;
+            padding: 3px;
+            margin-bottom: 18px;
+            border: 1px solid var(--sand);
+        }
+        .tab-btn {
+            flex: 1; padding: 9px 0;
+            border: none; border-radius: 9px;
+            background: transparent;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px; font-weight: 600;
+            color: var(--muted); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: white;
+            color: var(--forest);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        /* ── ORG INFO ── */
+        .org-header {
+            text-align: center;
+            padding: 8px 0 20px;
+        }
+        .org-icon {
+            width: 56px; height: 56px;
+            background: var(--cream);
+            border-radius: 16px;
+            border: 1.5px solid var(--sand);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            margin: 0 auto 10px;
+        }
+        .org-name {
+            font-family: 'Fraunces', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--forest);
+            margin-bottom: 3px;
+        }
+        .org-sub { font-size: 13px; color: var(--muted); }
+
+        /* ── MEMBERS LIST ── */
+        .members-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+        .member-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--cream);
+            margin-bottom: 6px;
+            border: 1px solid var(--sand);
+        }
+        .member-name { font-size: 14px; font-weight: 600; color: var(--text); }
+        .member-tags { display: flex; gap: 5px; margin-left: 6px; }
+        .tag-you   { font-size: 11px; color: var(--green); font-weight: 700; background: #eaf6ec; padding: 2px 7px; border-radius: 6px; }
+        .tag-admin { font-size: 11px; color: #92650a; font-weight: 700; background: var(--warn-bg); padding: 2px 7px; border-radius: 6px; }
+        .kick-btn {
+            background: var(--error-bg);
+            color: var(--error);
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .kick-btn:hover { background: #f8d7da; }
+
+        /* ── FAB ── */
+        #fab {
+            position: fixed;
+            bottom: 28px; right: 20px;
+            background: var(--forest);
+            color: white;
+            border: none;
+            border-radius: 18px;
+            padding: 0 22px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(30,77,43,0.35);
+            z-index: 999;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+        }
+        #fab:hover {
+            background: var(--green);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(30,77,43,0.38);
+        }
+        #fab:active { transform: scale(0.97); }
+
+        /* ── STATUS TOAST ── */
+        #status-msg {
+            position: fixed;
+            top: 72px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--forest);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 2000;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        /* ── PHOTO VIEWER ── */
+        #photo-viewer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.96);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+        #photo-viewer img {
+            width: 100vw; height: 100vh;
+            object-fit: contain;
+        }
+
+        /* ── RIPPLE ANIMATION ── */
+        @keyframes ripple {
+            0%   { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2);   opacity: 0; }
+        }
+
+        /* ── DIVIDER ── */
+        .divider {
+            height: 1px;
+            background: var(--sand);
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+    <div id="header-left">
+        <a id="header-back" href="/">← Назад</a>
+        <div class="header-divider"></div>
+        <div id="header-brand">
+            <img src="/static/LeafLogo.png" alt="Eco-Almaty">
+            <span>Eco-Almaty</span>
+        </div>
+    </div>
+    <div id="header-right">
+        <span id="uncleaned-count">🗑️ ...</span>
+        {% if role == 'cleaner' %}
+        <button id="settings-btn" onclick="openSettings()" title="Организация">⚙️</button>
+        {% endif %}
+    </div>
+</div>
+
+<div id="map"></div>
+<div id="status-msg"></div>
+
+{% if role == 'reporter' %}
+<button id="fab" onclick="openUpload()">
+    <span>📸</span> Сообщить
+</button>
+{% endif %}
+
+<!-- ── UPLOAD PANEL ── -->
+<div id="upload-panel" class="overlay">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+            <span class="sheet-title">Сообщить о мусоре</span>
+            <button class="close-btn" onclick="closeUpload()">✕</button>
+        </div>
+
+        <label for="photo-input" class="photo-upload-area" id="photo-box">
+            <div class="photo-upload-placeholder" id="photo-placeholder">
+                <span class="upload-icon">📁</span>
+                <p>Выбрать или сфотографировать</p>
+                <span>JPG, PNG • любой размер</span>
+            </div>
+            <img id="preview" src="" alt="preview"/>
+        </label>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" onchange="previewPhoto(event)">
+
+        <textarea class="comment-area" id="report-comment"
+            placeholder="Напишите описание (обязательно)..."
+            oninput="this.style.borderColor=this.value?'var(--green)':'var(--sand)'"></textarea>
+
+        <button class="btn btn-forest" onclick="submitReport()">
+            🤖 Проверить AI и отправить
+        </button>
+    </div>
+</div>
+
+<!-- ── MARKER DETAIL PANEL ── -->
+<div id="panel" class="overlay">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+            <span class="sheet-title" id="panel-title">Точка мусора</span>
+            <button class="close-btn" onclick="closePanel()">✕</button>
+        </div>
+
+        <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;">
+            <div class="panel-photo-wrap" onclick="openPhotoViewer()">
+                <img id="panel-photo" src="" alt="Фото"/>
+            </div>
+            <div class="panel-info">
+                <div id="panel-badge"></div>
+                <p class="panel-type" id="panel-type"></p>
+                <p class="panel-org"  id="panel-org"></p>
+                <p class="panel-date" id="panel-date"></p>
+            </div>
+        </div>
+
+        <div class="comment-box" id="panel-comment-box">
+            <div class="comment-box-label">💬 Комментарий заявителя</div>
+            <p class="comment-box-text" id="panel-comment"></p>
+        </div>
+
+        {% if role == 'cleaner' %}
+        <button class="btn btn-forest" id="claim-btn" onclick="claimTask()">✅ Взять задание</button>
+        <div id="clean-section" style="display:none;">
+            <div class="divider"></div>
+            <p style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;">Сфотографируйте убранное место</p>
+            <label class="file-upload-label" for="clean-photo-input">📁 Выбрать фото</label>
+            <input type="file" id="clean-photo-input" accept="image/*" capture="environment" onchange="previewClean(event)">
+            <img id="clean-preview" src="">
+            <button class="btn btn-forest" onclick="submitClean()">✅ Подтвердить уборку</button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ── SETTINGS PANEL ── -->
+<div id="settings-panel" class="overlay">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+            <span class="sheet-title">Организация</span>
+            <button class="close-btn" onclick="closeSettings()">✕</button>
+        </div>
+
+        <!-- In org -->
+        <div id="org-info" style="display:none;">
+            <div class="org-header">
+                <div class="org-icon">🏢</div>
+                <div class="org-name" id="org-name-display"></div>
+                <div class="org-sub">Вы состоите в организации</div>
+            </div>
+            <div class="divider"></div>
+            <div class="members-label">👥 Участники</div>
+            <div id="members-list"></div>
+            <button class="btn btn-ghost" onclick="leaveOrg()" style="margin-top:14px;">Покинуть организацию</button>
+        </div>
+
+        <!-- Join / Create -->
+        <div id="org-forms">
+            <div class="tab-row">
+                <button class="tab-btn active" id="tab-join"   onclick="switchTab('join')">Вступить</button>
+                <button class="tab-btn"         id="tab-create" onclick="switchTab('create')">Создать</button>
+            </div>
+            <div id="form-join">
+                <input type="text"     id="join-name"    placeholder="Название организации">
+                <input type="password" id="join-passcode" placeholder="Код доступа (8+ символов)">
+                <button class="btn btn-forest" onclick="joinOrg()">✅ Вступить</button>
+            </div>
+            <div id="form-create" style="display:none;">
+                <input type="text"     id="create-name"    placeholder="Название организации">
+                <input type="password" id="create-passcode" placeholder="Код доступа (8+ символов)">
+                <button class="btn btn-forest" onclick="createOrg()">🏢 Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fullscreen photo viewer -->
+<div id="photo-viewer" onclick="closePhotoViewer()">
+    <img id="photo-viewer-img" src=""/>
+</div>
+
+<script>
+    const role     = "{{ role }}";
+    const username = "{{ username }}";
+    let selectedLat, selectedLng, selectedReportId;
+    let currentOrg = localStorage.getItem('eco-almaty_org_' + username) || null;
+    let isOrgAdmin = false;
+
+    // ── MAP SETUP ──
+    const map = L.map('map').setView([43.238949, 76.889709], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const almatyBounds = L.latLngBounds([43.05, 76.60], [43.45, 77.20]);
+    map.setMaxBounds(almatyBounds);
+    map.setMinZoom(11);
+
+    function getColor(severity) {
+        if (severity === 'light')  return '#2d8a45';
+        if (severity === 'medium') return '#d97706';
+        return '#dc2626';
+    }
+
+    function makeIcon(severity, status) {
+        const color = getColor(severity);
+        if (status === 'claimed') {
+            return L.divIcon({
+                className: '',
+                html: `
+                    <div style="position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+                        <div style="position:absolute;width:36px;height:36px;border-radius:50%;background:rgba(45,138,69,0.3);animation:ripple 1.5s ease-out infinite;"></div>
+                        <div style="position:absolute;width:36px;height:36px;border-radius:50%;background:rgba(45,138,69,0.15);animation:ripple 1.5s ease-out infinite 0.5s;"></div>
+                        <div style="position:relative;width:20px;height:20px;border-radius:50%;background:#2d8a45;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>
+                    </div>`,
+                iconSize: [36, 36], iconAnchor: [18, 18]
+            });
+        }
+        return L.divIcon({
+            className: '',
+            html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
+            iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+    }
+
+    let markers = {};
+
+    function loadReports() {
+        fetch('/api/reports').then(r => r.json()).then(reports => {
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+            reports.forEach(report => {
+                const marker = L.marker([report.lat, report.lng], {
+                    icon: makeIcon(report.severity, report.status)
+                }).addTo(map);
+                marker.on('click', () => openPanel(report));
+                markers[report.id] = marker;
+            });
+        });
+    }
+
+    function loadStats() {
+        fetch('/api/stats').then(r => r.json()).then(data => {
+            document.getElementById('uncleaned-count').textContent = '🗑️ ' + data.uncleaned;
+        });
+    }
+
+    // ── PANELS ──
+
+    function openPanel(report) {
+        selectedReportId = report.id;
+        document.getElementById('panel-title').textContent = 'Точка #' + report.id;
+        document.getElementById('panel-photo').src = '/uploads/' + report.photo_path;
+
+        const typeMap = {
+            'plastic_bags': 'Пластиковые пакеты', 'bottles': 'Бутылки',
+            'construction': 'Строительный мусор', 'organic': 'Органические отходы',
+            'cardboard': 'Картон', 'electronics': 'Электроника',
+            'clothing': 'Одежда', 'mixed': 'Смешанные отходы', 'other': 'Другое'
+        };
+        const sevLabel = { 'light': 'Лёгкий', 'medium': 'Средний', 'severe': 'Тяжёлый' };
+        const sevDot   = { 'light': '🟢', 'medium': '🟡', 'severe': '🔴' };
+
+        document.getElementById('panel-type').textContent = typeMap[report.trash_type] || report.trash_type;
+        document.getElementById('panel-date').textContent = '🕐 ' + new Date(report.created_at).toLocaleString('kk-KZ');
+
+        const commentBox = document.getElementById('panel-comment-box');
+        if (report.comment) {
+            document.getElementById('panel-comment').textContent = report.comment;
+            commentBox.style.display = 'block';
+        } else {
+            commentBox.style.display = 'none';
+        }
+
+        document.getElementById('panel-org').textContent =
+            report.claimed_by ? '🏢 ' + report.claimed_by + ' убирает' : '';
+
+        const badge = document.getElementById('panel-badge');
+        badge.textContent = sevDot[report.severity] + ' ' + (sevLabel[report.severity] || report.severity);
+        badge.className = 'badge badge-' + report.severity;
+
+        if (role === 'cleaner') {
+            const claimBtn = document.getElementById('claim-btn');
+            if (report.status === 'claimed') {
+                claimBtn.style.display = 'none';
+                document.getElementById('clean-section').style.display = 'block';
+            } else {
+                claimBtn.style.display = 'flex';
+                document.getElementById('clean-section').style.display = 'none';
+            }
+        }
+
+        document.getElementById('panel').style.display = 'flex';
+    }
+
+    function closePanel() { document.getElementById('panel').style.display = 'none'; }
+
+    function openUpload() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                selectedLat = pos.coords.latitude;
+                selectedLng = pos.coords.longitude;
+            });
+        }
+        document.getElementById('upload-panel').style.display = 'flex';
+    }
+
+    function closeUpload() {
+        document.getElementById('upload-panel').style.display = 'none';
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('photo-placeholder').style.display = 'block';
+        document.getElementById('photo-input').value = '';
+        document.getElementById('report-comment').value = '';
+        document.getElementById('report-comment').style.borderColor = 'var(--sand)';
+    }
+
+    function openSettings() {
+        if (currentOrg) {
+            showOrgInfo();
+        } else {
+            document.getElementById('org-info').style.display  = 'none';
+            document.getElementById('org-forms').style.display = 'block';
+        }
+        document.getElementById('settings-panel').style.display = 'flex';
+    }
+
+    function closeSettings() { document.getElementById('settings-panel').style.display = 'none'; }
+
+    function showOrgInfo() {
+        document.getElementById('org-name-display').textContent = currentOrg;
+        document.getElementById('org-info').style.display  = 'block';
+        document.getElementById('org-forms').style.display = 'none';
+        loadMembers();
+    }
+
+    function loadMembers() {
+        fetch(`/api/org/members?org=${encodeURIComponent(currentOrg)}&username=${encodeURIComponent(username)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.members.some(m => m.toLowerCase() === username.toLowerCase())) {
+                    currentOrg = null; isOrgAdmin = false;
+                    localStorage.removeItem('eco-almaty_org_' + username);
+                    closeSettings();
+                    showStatus('Вас исключили из организации');
+                    return;
+                }
+                const list = document.getElementById('members-list');
+                list.innerHTML = '';
+                const sorted = [data.admin, ...data.members.filter(m => m.toLowerCase() !== data.admin.toLowerCase())];
+                sorted.forEach(member => {
+                    const isYou   = member.toLowerCase() === username.toLowerCase();
+                    const isAdmin = member.toLowerCase() === data.admin.toLowerCase();
+                    const row = document.createElement('div');
+                    row.className = 'member-row';
+                    row.innerHTML = `
+                        <div style="display:flex;align-items:center;">
+                            <span class="member-name">${member}</span>
+                            <div class="member-tags">
+                                ${isYou   ? '<span class="tag-you">вы</span>'     : ''}
+                                ${isAdmin ? '<span class="tag-admin">👑 admin</span>' : ''}
+                            </div>
+                        </div>
+                        ${data.is_admin && !isYou ? `<button class="kick-btn" onclick="kickMember('${member}')">Исключить</button>` : ''}
+                    `;
+                    list.appendChild(row);
+                });
+            });
+    }
+
+    function kickMember(target) {
+        if (!confirm(`"${target}" исключить из организации?`)) return;
+        fetch('/api/org/kick', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ requester: username, target, org_name: currentOrg })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) { showStatus('✅ ' + target + ' исключён'); loadMembers(); }
+            else showStatus('❌ Произошла ошибка');
+        });
+    }
+
+    function switchTab(tab) {
+        document.getElementById('form-join').style.display   = tab === 'join'   ? 'block' : 'none';
+        document.getElementById('form-create').style.display = tab === 'create' ? 'block' : 'none';
+        document.getElementById('tab-join').classList.toggle('active',   tab === 'join');
+        document.getElementById('tab-create').classList.toggle('active', tab === 'create');
+    }
+
+    function joinOrg() {
+        const name     = document.getElementById('join-name').value.trim();
+        const passcode = document.getElementById('join-passcode').value.trim();
+        if (!name) { showStatus('Введите название организации!'); return; }
+        if (passcode.length < 8) { showStatus('Код доступа должен быть 8+ символов!'); return; }
+        fetch('/api/org/join', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, passcode, username })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentOrg = data.name; isOrgAdmin = data.is_admin;
+                localStorage.setItem('eco-almaty_org_' + username, currentOrg);
+                showStatus('✅ ' + currentOrg + ' вы вступили в организацию!');
+                showOrgInfo();
+            } else showStatus('❌ Организация не найдена или код неверен!');
+        });
+    }
+
+    function createOrg() {
+        const name     = document.getElementById('create-name').value.trim();
+        const passcode = document.getElementById('create-passcode').value.trim();
+        if (!name) { showStatus('Введите название организации!'); return; }
+        if (passcode.length < 8) { showStatus('Код доступа должен быть 8+ символов!'); return; }
+        fetch('/api/org/create', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name, passcode, username })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentOrg = data.name; isOrgAdmin = true;
+                localStorage.setItem('eco-almaty_org_' + username, currentOrg);
+                showStatus('🏢 ' + currentOrg + ': организация создана!');
+                showOrgInfo();
+            } else if (data.error === 'taken') showStatus('❌ Это название уже занято!');
+            else showStatus('❌ Ошибка: ' + (data.error || 'неизвестно'));
+        })
+        .catch(() => showStatus('❌ Ошибка подключения к серверу'));
+    }
+
+    function leaveOrg() {
+        fetch('/api/org/leave', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username })
+        }).then(() => {
+            currentOrg = null; isOrgAdmin = false;
+            localStorage.removeItem('eco-almaty_org_' + username);
+            closeSettings();
+            showStatus('Вы покинули организацию');
+        });
+    }
+
+    // ── PHOTO HELPERS ──
+
+    function previewPhoto(event) {
+        const file = event.target.files[0];
+        if (file) {
+            document.getElementById('preview').src = URL.createObjectURL(file);
+            document.getElementById('preview').style.display = 'block';
+            document.getElementById('photo-placeholder').style.display = 'none';
+        }
+    }
+
+    function previewClean(event) {
+        const file = event.target.files[0];
+        if (file) {
+            document.getElementById('clean-preview').src = URL.createObjectURL(file);
+            document.getElementById('clean-preview').style.display = 'block';
+        }
+    }
+
+    function showStatus(msg, duration = 3000) {
+        const el = document.getElementById('status-msg');
+        el.textContent = msg;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', duration);
+    }
+
+    // ── SUBMIT ──
+
+    function submitReport() {
+        const file    = document.getElementById('photo-input').files[0];
+        const comment = document.getElementById('report-comment').value.trim();
+        if (!file)    { showStatus('Сначала выберите фото!'); return; }
+        if (!comment) { showStatus('Напишите описание!'); return; }
+        if (!selectedLat) { selectedLat = 43.238949; selectedLng = 76.889709; }
+
+        showStatus('🤖 AI Проверяет...', 10000);
+        const fd = new FormData();
+        fd.append('photo', file); fd.append('lat', selectedLat);
+        fd.append('lng', selectedLng); fd.append('comment', comment);
+
+        fetch('/api/report', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if      (data.error === 'not_trash')   showStatus('❌ Это не мусор!');
+                else if (data.error === 'bad_comment') showStatus('❌ Комментарий содержит недопустимый контент!');
+                else if (data.success) { showStatus('✅ Отмечено на карте!'); closeUpload(); loadReports(); loadStats(); }
+                else showStatus('Ошибка: ' + data.error);
+            })
+            .catch(() => showStatus('Ошибка подключения'));
+    }
+
+    function claimTask() {
+        fetch('/api/claim/' + selectedReportId, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ org_name: currentOrg || username })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showStatus('✅ Задание принято!');
+                document.getElementById('claim-btn').style.display = 'none';
+                document.getElementById('clean-section').style.display = 'block';
+                loadReports();
+            }
+        });
+    }
+
+    function submitClean() {
+        const file = document.getElementById('clean-photo-input').files[0];
+        if (!file) { showStatus('Сначала загрузите фото!'); return; }
+        showStatus('🤖 AI Проверяет...', 10000);
+        const fd = new FormData();
+        fd.append('photo', file);
+        fetch('/api/clean/' + selectedReportId, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if      (data.error === 'not_clean') showStatus('❌ Место ещё не убрано!');
+                else if (data.success) { showStatus('🎉 Убрано! Маркер удалён.'); closePanel(); loadReports(); loadStats(); }
+                else showStatus('Ошибка: ' + data.error);
+            })
+            .catch(() => showStatus('Ошибка подключения'));
+    }
+
+    function openPhotoViewer() {
+        document.getElementById('photo-viewer-img').src = document.getElementById('panel-photo').src;
+        document.getElementById('photo-viewer').style.display = 'flex';
+    }
+    function closePhotoViewer() { document.getElementById('photo-viewer').style.display = 'none'; }
+
+    loadReports();
+    loadStats();
+    setInterval(loadReports, 30000);
+    setInterval(loadStats, 30000);
+
+    if (role === 'reporter' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+        });
+    }
+</script>
+</body>
+</html>
